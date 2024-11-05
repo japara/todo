@@ -1,13 +1,13 @@
 import React, { useState } from "react";
 import { useSignIn } from "@clerk/clerk-react";
-import { useNavigate } from "react-router-dom"; // Import useNavigate
+import { useNavigate } from "react-router-dom";
 import background from "../images/Group.svg";
 import prof2 from "../images/profile2.png";
 import google from "../images/google.svg";
 
 function SignInPage() {
   const { signIn, isLoaded } = useSignIn();
-  const navigate = useNavigate(); // Initialize the navigate function
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
@@ -22,7 +22,7 @@ function SignInPage() {
         password: password,
       });
       alert("Sign-in successful!");
-      navigate("/user"); // Redirect to User.js page after sign-in
+      navigate("/user");
     } catch (err) {
       setErrorMessage("Failed to sign in. Please check your credentials.");
       console.error("Sign-in error:", err);
