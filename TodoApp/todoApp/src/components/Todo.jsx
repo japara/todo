@@ -1,10 +1,21 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../supabaseClient";
+import { useUser } from "@clerk/clerk-react";
 
 function Todo() {
+  const { user } = useUser();
+  const [task, setTask] = useState("");
+
+  // Log user ID for verification
+  // console.log("User ID:", user?.id);
+
   // Define the function to fetch todos from Supabase
   const getTodos = async () => {
-    const { data, error } = await supabase.from("todos").select("*");
+    const { data, error } = await supabase
+      .from("todos")
+      .select("*")
+      .eq("user_id", user.id);
     console.log(data);
 
     if (error) {
@@ -22,6 +33,31 @@ function Todo() {
     queryFn: getTodos,
   });
 
+  // Function to add a new task directly
+  const handleAddTask = async () => {
+    if (task.trim() !== "" && user) {
+      try {
+        console.log(task);
+        const { data, error } = await supabase.from("todos").insert([
+          {
+            description: task,
+            created_at: new Date().toISOString(),
+            user_id: user.id,
+          },
+        ]);
+
+        if (error) {
+          throw new Error(error.message);
+        }
+
+        console.log("Task added:", data);
+        setTask("");
+      } catch (error) {
+        console.error("Error adding task:", error.message);
+      }
+    }
+  };
+
   // Handle loading state
   if (isLoading) return <p>Loading...</p>;
 
@@ -33,11 +69,22 @@ function Todo() {
 
   return (
     <div className="justify-center items-center flex flex-col">
+      {/* Input for adding a new task */}
       <input
         type="text"
+        value={task}
+        onChange={(e) => setTask(e.target.value)}
         className="m-4 w-[50%] h-[48px] bg-[#FFFFFF] py-]10px] px-[14px] border-[1px] text-[16px]"
         placeholder="+ Add task"
       />
+      <button
+        onClick={handleAddTask}
+        className="mb-4 bg-blue-500 text-white px-4 py-2 rounded"
+      >
+        Add Task
+      </button>
+
+      {/* Task List */}
       <div className="flex flex-row flex-wrap gap-6">
         {todos.map((todo, index) => {
           // Convert created_at to dd-mm-yyyy format
