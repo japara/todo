@@ -1,22 +1,20 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "../supabaseClient";
 import { useUser } from "@clerk/clerk-react";
 
 function Todo() {
   const { user } = useUser();
   const [task, setTask] = useState("");
+  const [menuOpen, setMenuOpen] = useState({});
+  const queryClient = useQueryClient();
 
-  // Log user ID for verification
-  // console.log("User ID:", user?.id);
-
-  // Define the function to fetch todos from Supabase
   const getTodos = async () => {
+    if (!user) return [];
     const { data, error } = await supabase
       .from("todos")
       .select("*")
       .eq("user_id", user.id);
-    console.log(data);
 
     if (error) {
       throw new Error(error.message);
@@ -25,24 +23,25 @@ function Todo() {
   };
 
   const {
-    data: todos,
+    data: todos = [],
     error,
     isLoading,
   } = useQuery({
-    queryKey: ["todos"],
+    queryKey: ["todos", user?.id],
     queryFn: getTodos,
+    enabled: !!user,
   });
 
-  // Function to add a new task directly
   const handleAddTask = async () => {
     if (task.trim() !== "" && user) {
       try {
-        console.log(task);
         const { data, error } = await supabase.from("todos").insert([
           {
             description: task,
             created_at: new Date().toISOString(),
             user_id: user.id,
+            important: null,
+            complate: null,
           },
         ]);
 
@@ -50,31 +49,72 @@ function Todo() {
           throw new Error(error.message);
         }
 
-        console.log("Task added:", data);
         setTask("");
+        queryClient.invalidateQueries(["todos", user.id]);
       } catch (error) {
         console.error("Error adding task:", error.message);
       }
     }
   };
 
-  // Handle loading state
-  if (isLoading) return <p>Loading...</p>;
+  const toggleMenu = (id) => {
+    setMenuOpen((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
 
-  // Handle error state
+  const handleDeleteTask = async (id) => {
+    try {
+      const { error } = await supabase.from("todos").delete().eq("id", id);
+      if (error) throw new Error(error.message);
+      queryClient.invalidateQueries(["todos", user.id]);
+      setMenuOpen((prev) => ({ ...prev, [id]: false }));
+    } catch (error) {
+      console.error("Error deleting task:", error.message);
+    }
+  };
+
+  const handleMarkImportant = async (id, currentStatus) => {
+    try {
+      const { error } = await supabase
+        .from("todos")
+        .update({ important: !currentStatus })
+        .eq("id", id);
+      if (error) throw new Error(error.message);
+      queryClient.invalidateQueries(["todos", user.id]);
+      setMenuOpen((prev) => ({ ...prev, [id]: false }));
+    } catch (error) {
+      console.error("Error marking task as important:", error.message);
+    }
+  };
+
+  const handleMarkDone = async (id, currentStatus) => {
+    try {
+      const { error } = await supabase
+        .from("todos")
+        .update({ complate: !currentStatus })
+        .eq("id", id);
+      if (error) throw new Error(error.message);
+      queryClient.invalidateQueries(["todos", user.id]);
+      setMenuOpen((prev) => ({ ...prev, [id]: false }));
+    } catch (error) {
+      console.error("Error marking task as done:", error.message);
+    }
+  };
+
+  if (isLoading) return <p>Loading...</p>;
   if (error) return <p>Error: {error.message}</p>;
 
-  // Background color array
   const bgColors = ["#E3EBFC", "#FBF0E4", "#E4F6FC", "#FCE4E4"];
 
   return (
     <div className="justify-center items-center flex flex-col">
-      {/* Input for adding a new task */}
       <input
         type="text"
         value={task}
         onChange={(e) => setTask(e.target.value)}
-        className="m-4 w-[50%] h-[48px] bg-[#FFFFFF] py-]10px] px-[14px] border-[1px] text-[16px]"
+        className="m-4 w-[50%] h-[48px] bg-[#FFFFFF] py-2 px-4 border border-gray-300 text-[16px] rounded-lg"
         placeholder="+ Add task"
       />
       <button
@@ -84,10 +124,8 @@ function Todo() {
         Add Task
       </button>
 
-      {/* Task List */}
       <div className="flex flex-row flex-wrap gap-6">
         {todos.map((todo, index) => {
-          // Convert created_at to dd-mm-yyyy format
           const date = new Date(todo.created_at);
           const formattedDate = `${String(date.getUTCDate()).padStart(
             2,
@@ -97,17 +135,65 @@ function Todo() {
             "0"
           )}-${date.getUTCFullYear()}`;
 
-          // Determine background color based on the index
           const bgColor = bgColors[index % bgColors.length];
 
           return (
             <div
               key={todo.id}
               style={{ backgroundColor: bgColor }}
-              className="p-6 rounded-lg shadow-md text-left max-w-[22%] w-full h-fit"
+              className="p-6 rounded-lg shadow-md text-left max-w-[22%] w-full h-fit relative"
             >
               <h2 className="mb-4">{formattedDate}</h2>
               <p className="text-balance break-all">{todo.description}</p>
+
+              <button
+                className="absolute top-2 right-2"
+                onClick={() => toggleMenu(todo.id)}
+              >
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  className="w-5 h-5"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth="2"
+                    d="M12 6v.01M12 12v.01M12 18v.01"
+                  />
+                </svg>
+              </button>
+
+              {menuOpen[todo.id] && (
+                <div className="absolute top-8 right-2 bg-white shadow-md border rounded-lg p-2 z-10">
+                  <ul>
+                    <li
+                      className="hover:bg-gray-100 p-2 cursor-pointer"
+                      onClick={() =>
+                        handleMarkImportant(todo.id, todo.important)
+                      }
+                    >
+                      {todo.important
+                        ? "Unmark Important"
+                        : "Mark as Important"}
+                    </li>
+                    <li
+                      className="hover:bg-gray-100 p-2 cursor-pointer"
+                      onClick={() => handleMarkDone(todo.id, todo.complate)}
+                    >
+                      {todo.complate ? "Undo Mark as Done" : "Mark as Done"}
+                    </li>
+                    <li
+                      className="hover:bg-gray-100 p-2 cursor-pointer text-red-500"
+                      onClick={() => handleDeleteTask(todo.id)}
+                    >
+                      Delete
+                    </li>
+                  </ul>
+                </div>
+              )}
             </div>
           );
         })}
