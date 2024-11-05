@@ -32,32 +32,39 @@ function Todo() {
   const bgColors = ["#E3EBFC", "#FBF0E4", "#E4F6FC", "#FCE4E4"];
 
   return (
-    <div className="flex flex-row flex-wrap gap-6">
-      {todos.map((todo, index) => {
-        // Convert created_at to dd-mm-yyyy format
-        const date = new Date(todo.created_at);
-        const formattedDate = `${String(date.getUTCDate()).padStart(
-          2,
-          "0"
-        )}-${String(date.getUTCMonth() + 1).padStart(
-          2,
-          "0"
-        )}-${date.getUTCFullYear()}`;
+    <div className="justify-center items-center flex flex-col">
+      <input
+        type="text"
+        className="m-4 w-[50%] h-[48px] bg-[#FFFFFF] py-]10px] px-[14px] border-[1px] text-[16px]"
+        placeholder="+ Add task"
+      />
+      <div className="flex flex-row flex-wrap gap-6">
+        {todos.map((todo, index) => {
+          // Convert created_at to dd-mm-yyyy format
+          const date = new Date(todo.created_at);
+          const formattedDate = `${String(date.getUTCDate()).padStart(
+            2,
+            "0"
+          )}-${String(date.getUTCMonth() + 1).padStart(
+            2,
+            "0"
+          )}-${date.getUTCFullYear()}`;
 
-        // Determine background color based on the index
-        const bgColor = bgColors[index % bgColors.length];
+          // Determine background color based on the index
+          const bgColor = bgColors[index % bgColors.length];
 
-        return (
-          <div
-            key={todo.id}
-            style={{ backgroundColor: bgColor }}
-            className="p-6 rounded-lg shadow-md text-left max-w-[22%] w-full overflow-hidden"
-          >
-            <h2 className="mb-4">{formattedDate}</h2>
-            <p className="truncate">{todo.description}</p>
-          </div>
-        );
-      })}
+          return (
+            <div
+              key={todo.id}
+              style={{ backgroundColor: bgColor }}
+              className="p-6 rounded-lg shadow-md text-left max-w-[22%] w-full h-fit"
+            >
+              <h2 className="mb-4">{formattedDate}</h2>
+              <p className="text-balance break-all">{todo.description}</p>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
