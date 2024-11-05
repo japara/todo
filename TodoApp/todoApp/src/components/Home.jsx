@@ -3,6 +3,7 @@ import arrow from "../images/arrowDown.svg";
 import sun from "../images/sun.svg";
 import star from "../images/star.svg";
 import { UserButton } from "@clerk/clerk-react";
+import Todo from "./Todo";
 
 function Home() {
   return (
@@ -39,6 +40,9 @@ function Home() {
         <a href="#" className="h-[48px] w-[252px] flex items-center py-[13px]">
           <img src={sun} alt="sun" className="ml-[16px] mr-[12px]"></img>Chart
         </a>
+      </div>
+      <div className="w-[75%] absolute left-[300px]">
+        <Todo />
       </div>
     </>
   );
