@@ -7,17 +7,13 @@ import Todo from "./Todo";
 import Chart from "./Chart";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-// import { supabase } from "../supabaseClient";
+import { supabase } from "../supabaseClient";
 import { useUser } from "@clerk/clerk-react";
-import { createClient } from "@supabase/supabase-js";
 
 function Home() {
   const { user } = useUser();
   const [showImportantOnly, setShowImportantOnly] = useState(false);
   const [showChart, setShowChart] = useState(false);
-  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-  const supabaseKey = import.meta.env.VITE_SUPABASE_KEY;
-  const supabase = createClient(supabaseUrl, supabaseKey);
 
   const getTodos = async () => {
     if (!user) return [];
