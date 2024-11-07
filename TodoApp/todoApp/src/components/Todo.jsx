@@ -1,13 +1,13 @@
-import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState, useEffect, useRef } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "../supabaseClient";
 import { useUser } from "@clerk/clerk-react";
 
-function Todo() {
+function Todo({ showImportantOnly }) {
   const { user } = useUser();
   const [task, setTask] = useState("");
-  const [menuOpen, setMenuOpen] = useState({});
-  const queryClient = useQueryClient();
+  const [menuOpen, setMenuOpen] = useState(null);
+  const menuRef = useRef(null);
 
   const getTodos = async () => {
     if (!user) return [];
@@ -16,9 +16,7 @@ function Todo() {
       .select("*")
       .eq("user_id", user.id);
 
-    if (error) {
-      throw new Error(error.message);
-    }
+    if (error) throw new Error(error.message);
     return data;
   };
 
@@ -26,6 +24,7 @@ function Todo() {
     data: todos = [],
     error,
     isLoading,
+    refetch,
   } = useQuery({
     queryKey: ["todos", user?.id],
     queryFn: getTodos,
@@ -35,41 +34,32 @@ function Todo() {
   const handleAddTask = async () => {
     if (task.trim() !== "" && user) {
       try {
-        const { data, error } = await supabase.from("todos").insert([
+        const { error } = await supabase.from("todos").insert([
           {
             description: task,
             created_at: new Date().toISOString(),
             user_id: user.id,
-            important: null,
-            complate: null,
+            important: false,
+            complate: false,
           },
         ]);
-
-        if (error) {
-          throw new Error(error.message);
-        }
-
+        if (error) throw new Error(error.message);
         setTask("");
-        queryClient.invalidateQueries(["todos", user.id]);
+        refetch();
       } catch (error) {
         console.error("Error adding task:", error.message);
       }
     }
   };
 
-  const toggleMenu = (id) => {
-    setMenuOpen((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }));
-  };
+  const toggleMenu = (id) => setMenuOpen(menuOpen === id ? null : id);
 
   const handleDeleteTask = async (id) => {
     try {
       const { error } = await supabase.from("todos").delete().eq("id", id);
       if (error) throw new Error(error.message);
-      queryClient.invalidateQueries(["todos", user.id]);
-      setMenuOpen((prev) => ({ ...prev, [id]: false }));
+      setMenuOpen(null);
+      refetch();
     } catch (error) {
       console.error("Error deleting task:", error.message);
     }
@@ -82,8 +72,8 @@ function Todo() {
         .update({ important: !currentStatus })
         .eq("id", id);
       if (error) throw new Error(error.message);
-      queryClient.invalidateQueries(["todos", user.id]);
-      setMenuOpen((prev) => ({ ...prev, [id]: false }));
+      setMenuOpen(null);
+      refetch();
     } catch (error) {
       console.error("Error marking task as important:", error.message);
     }
@@ -96,15 +86,29 @@ function Todo() {
         .update({ complate: !currentStatus })
         .eq("id", id);
       if (error) throw new Error(error.message);
-      queryClient.invalidateQueries(["todos", user.id]);
-      setMenuOpen((prev) => ({ ...prev, [id]: false }));
+      setMenuOpen(null);
+      refetch();
     } catch (error) {
       console.error("Error marking task as done:", error.message);
     }
   };
 
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setMenuOpen(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   if (isLoading) return <p>Loading...</p>;
   if (error) return <p>Error: {error.message}</p>;
+
+  const displayedTodos = showImportantOnly
+    ? todos.filter((todo) => todo.important)
+    : todos;
 
   const bgColors = ["#E3EBFC", "#FBF0E4", "#E4F6FC", "#FCE4E4"];
 
@@ -124,8 +128,8 @@ function Todo() {
         Add Task
       </button>
 
-      <div className="flex flex-row flex-wrap gap-6">
-        {todos.map((todo, index) => {
+      <div className="flex flex-row flex-wrap gap-6 w-full">
+        {displayedTodos.map((todo, index) => {
           const date = new Date(todo.created_at);
           const formattedDate = `${String(date.getUTCDate()).padStart(
             2,
@@ -166,8 +170,11 @@ function Todo() {
                 </svg>
               </button>
 
-              {menuOpen[todo.id] && (
-                <div className="absolute top-8 right-2 bg-white shadow-md border rounded-lg p-2 z-10">
+              {menuOpen === todo.id && (
+                <div
+                  ref={menuRef}
+                  className="absolute top-8 right-2 bg-white shadow-md border rounded-lg p-2 z-10"
+                >
                   <ul>
                     <li
                       className="hover:bg-gray-100 p-2 cursor-pointer"
@@ -175,15 +182,13 @@ function Todo() {
                         handleMarkImportant(todo.id, todo.important)
                       }
                     >
-                      {todo.important
-                        ? "Unmark Important"
-                        : "Mark as Important"}
+                      {todo.important ? "Unmark Important" : "Mark Important"}
                     </li>
                     <li
                       className="hover:bg-gray-100 p-2 cursor-pointer"
                       onClick={() => handleMarkDone(todo.id, todo.complate)}
                     >
-                      {todo.complate ? "Undo Mark as Done" : "Mark as Done"}
+                      {todo.complate ? "Undo Mark Done" : "Mark Done"}
                     </li>
                     <li
                       className="hover:bg-gray-100 p-2 cursor-pointer text-red-500"
