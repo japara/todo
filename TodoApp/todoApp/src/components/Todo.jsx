@@ -128,7 +128,7 @@ function Todo({ showImportantOnly }) {
         Add Task
       </button>
 
-      <div className="flex flex-row flex-wrap gap-6 w-full">
+      <div className="flex flex-col gap-6 w-full lg:flex-row lg:flex-wrap">
         {displayedTodos.map((todo, index) => {
           const date = new Date(todo.created_at);
           const formattedDate = `${String(date.getUTCDate()).padStart(
@@ -145,7 +145,7 @@ function Todo({ showImportantOnly }) {
             <div
               key={todo.id}
               style={{ backgroundColor: bgColor }}
-              className="p-6 rounded-lg shadow-md text-left max-w-[22%] w-full h-fit relative"
+              className="p-6 rounded-lg shadow-md text-left w-full lg:max-w-[22%] h-fit relative"
             >
               <h2 className="mb-4">{formattedDate}</h2>
               <p className="text-balance break-all">{todo.description}</p>
